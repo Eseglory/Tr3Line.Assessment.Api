@@ -20,8 +20,7 @@ namespace Tr3Line.Assessment.Helpers
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            // connect to sqlite database
-            options.UseSqlite(Configuration.GetConnectionString("Tr3Line.AssessmentDatabase"));
+            options.UseSqlServer(Configuration.GetConnectionString("Tr3Line.Assessment.Api.Database"));
         }
     }
 }

@@ -9,6 +9,9 @@ using Microsoft.Extensions.FileProviders;
 using System.Linq;
 using Tr3Line.Assessment.Services;
 using Tr3Line.Assessment.Api.Entities;
+using Tr3Line.Assessment.Api.Models;
+using Tr3Line.Assessment.Api.Repository.Interface;
+using Tr3Line.Assessment.Api.Helpers;
 
 namespace Tr3Line.Assessment.Api.Controllers
 {
@@ -21,48 +24,75 @@ namespace Tr3Line.Assessment.Api.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IMapper _mapper;
         private readonly IAccountService _accountService;
-
+        private readonly ICompareResultRepository _compareResult;
         #endregion
 
 
         public FileAttachmentController(
             IMapper mapper,
             IWebHostEnvironment hostEnvironment,
-            IAccountService accountService
+            IAccountService accountService,
+            ICompareResultRepository compareResult
             )
         {
             _webHostEnvironment = hostEnvironment;
             _mapper = mapper;
             _accountService = accountService;
+            _compareResult = compareResult;
         }
 
-        [HttpPost("UploadProfilePicture")]
-        public IActionResult UploadFile(IFormFile student1file, CompareResult model)
+        [HttpPost("CompareUploadedFiles")]
+        public async System.Threading.Tasks.Task<IActionResult> CompareUploadedFiles([FromForm]  CompareResultViewModel model)
         {
             try
             {
-                string uniqueSTudent1FileName = null;
+                string text1 = "";
+                string text2 = "";
 
-                if(student1file.Length > 100000)
+                if (model.Student1file.Length > 100000)
                 {
-                    return BadRequest(new { message = "your image can not be more than 100 kilobytes" });
+                    return BadRequest(new { message = "your file can not be more than 100 kilobytes" });
                 }
-                if (student1file.FileName != null)
+
+                if (model.Student1file.FileName == model.Student2file.FileName)
+                {
+                    return BadRequest(new { message = "the two files can not have the same name" });
+                }
+                if (model.Student1file.FileName != null)
                 {
                     string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploadedfiles");
-                    uniqueSTudent1FileName = Guid.NewGuid().ToString() + "_" + student1file.FileName;
-                    string filePath = Path.Combine(uploadsFolder, uniqueSTudent1FileName);
+                    string filePath = Path.Combine(uploadsFolder, model.Student1file.FileName);
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
-                        student1file.CopyTo(fileStream);
+                        model.Student1file.CopyTo(fileStream);
                     }
-                    string copyOfUploadStudent1File = GetFile(uniqueSTudent1FileName);
-                    string text1 = System.IO.File.ReadAllText(copyOfUploadStudent1File);
-
-                    model.StudentOneFile = uniqueSTudent1FileName;
-                   // var savefilename = _accountService.UpdateProfilePicture(Account.Id, uniqueFileName);
+                    string copyOfUploadStudent1File = GetFile(model.Student1file.FileName);
+                    text1 = System.IO.File.ReadAllText(copyOfUploadStudent1File);
                 }
-                return Ok(new { message = "" });
+
+                if (model.Student2file.FileName != null)
+                {
+                    string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploadedfiles");
+                    string filePath = Path.Combine(uploadsFolder, model.Student2file.FileName);
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        model.Student2file.CopyTo(fileStream);
+                    }
+                    string copyOfUploadStudent1File = GetFile(model.Student2file.FileName);
+                    text2 = System.IO.File.ReadAllText(copyOfUploadStudent1File);
+                }
+                var result = CompareFileContent.CompareFileHandler(text1, text2);
+                CompareResult compareResult = new CompareResult()
+                {
+                    StudentOneFileName = model.Student1file.FileName,
+                    StudentOne = model.StudentOne,
+                    StudentTwo = model.StudentTwo,
+                    StudentTwoFileName = model.Student1file.FileName,
+                    ComparismResult = result,
+                };
+                await _compareResult.CreateAsync(compareResult);
+                await _compareResult.SaveChangesAsync();
+                return Ok(new { message = result });
             }
             catch (Exception ex)
             {
