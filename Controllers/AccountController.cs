@@ -70,21 +70,12 @@ namespace Tr3Line.Assessment.Api.Controllers
             return Ok(new { message = "Token revoked" });
         }
 
-
         [HttpPost("forgot-password")]
         public IActionResult ForgotPassword(ForgotPasswordRequest model)
         {
             _accountService.ForgotPassword(model, Request.Headers["origin"]);
             return Ok(new { message = "Please check your email for password reset instructions" });
         }
-
-        [HttpPost]
-        public ActionResult<AccountResponse> Create(CreateRequest model)
-        {
-            var account = _accountService.Create(model);
-            return Ok(account);
-        }
-
 
         // helper methods
 
