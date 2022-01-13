@@ -7,14 +7,14 @@ on:
 
 
 jobs:
-  build_thepowerfulwebapi:
+  build_tr3Lineassessmentapi:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
     - name: Build and deploy the Docker image
       env: 
         HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        APP_NAME: ${{ 'thepowerfulwebapi' }}
+        APP_NAME: ${{ 'tr3Lineassessmentapi' }}
       run: |
         cd ./
         docker login --username=_ --password=$HEROKU_API_KEY registry.heroku.com
